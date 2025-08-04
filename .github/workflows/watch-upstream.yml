@@ -2,7 +2,7 @@ name: Auto-Trigger on llama-cpp-python Release
 
 on:
   schedule:
-    - cron: '0 */12 * * *'
+    - cron: '0 */12 * * *'  # Every 12 hours
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install jq (if missing)
+      - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Get latest upstream llama-cpp-python tag
@@ -24,17 +24,8 @@ jobs:
             exit 1
           fi
 
-          if [[ "$TAG" == *-* ]]; then
-            BASE_TAG="${TAG%-*}"
-          else
-            BASE_TAG="$TAG"
-          fi
-
           echo "Latest tag: $TAG"
-          echo "Base tag: $BASE_TAG"
-
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Check if this release was already built
         id: check
@@ -51,13 +42,14 @@ jobs:
             echo "trigger=true" >> "$GITHUB_OUTPUT"
           fi
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Trigger build-wheels.yml
         if: steps.check.outputs.trigger == 'true'
         uses: benc-uk/workflow-dispatch@v1
         with:
           workflow: build-wheels.yml
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
           inputs: |
-            llama_cpp_version: ${{ steps.get_latest.outputs.tag }}
+            version: ${{ steps.get_latest.outputs.tag }}
+            publish_release: 'true'
