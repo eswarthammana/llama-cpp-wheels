@@ -16,22 +16,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        arch: [x86_64]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        exclude:
+          - os: macos-latest
+            arch: x86_64
+          - os: windows-latest
+            arch: x86_64
         include:
           - os: ubuntu-latest
-            platform: linux
-            arch: x86_64
-
-          - os: ubuntu-latest
-            platform: linux
             arch: aarch64
-
-          - os: macos-latest
-            platform: macos
-            arch: universal2
-
-          - os: windows-latest
-            platform: windows
-            arch: AMD64
+            python-version: "3.12"
 
     steps:
       - name: Set up QEMU (for ARM64)
@@ -40,23 +36,23 @@ jobs:
         with:
           platforms: all
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12.9'
+          python-version: ${{ matrix.python-version }}
 
       - name: Checkout llama-cpp-python
         uses: actions/checkout@v4
         with:
           repository: abetlen/llama-cpp-python
-          ref: ${{ inputs.llama_cpp_version }}
+          ref: ${{ inputs.version }}
           submodules: true
 
       - name: Extract base tag
         id: extract_tag
         shell: bash
         run: |
-          TAG="${{ inputs.llama_cpp_version }}"
+          TAG="${{ inputs.version }}"
           BASE_TAG="${TAG%-*}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
@@ -78,23 +74,16 @@ jobs:
         run: |
           brew install cmake openblas
 
-      - name: Build wheels for Python 3.8 to 3.12
+      - name: Build wheel
         shell: bash
         run: |
-          PY_VERSIONS="3.8 3.9 3.10 3.11 3.12"
-          mkdir -p repaired_wheels
-          for PYVER in $PY_VERSIONS; do
-            echo "Installing Python $PYVER"
-            pyenv install -s $PYVER
-            pyenv local $PYVER
-            python -m pip install -U pip build
-            python -m build --wheel --outdir dist/
-          done
+          python -m pip install -U pip build
+          python -m build --wheel --outdir dist/
 
-      - name: Upload built wheels as artifacts
+      - name: Upload built wheel as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: llama-wheels-${{ matrix.os }}-${{ matrix.arch }}
+          name: llama-wheels-${{ matrix.os }}-${{ matrix.arch }}-py${{ matrix.python-version }}
           path: dist/*.whl
 
   release:
