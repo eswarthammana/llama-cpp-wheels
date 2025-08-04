@@ -13,21 +13,33 @@ on:
 
 jobs:
   build_wheels:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        arch: [x86_64]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-        exclude:
-          - os: macos-latest
-            arch: x86_64
-          - os: windows-latest
-            arch: x86_64
         include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            arch: x86_64
+            python-version: "3.12"
+            runner: ubuntu-latest
+
+          # Linux aarch64
           - os: ubuntu-latest
             arch: aarch64
             python-version: "3.12"
+            runner: ubuntu-latest
+
+          # macOS universal2
+          - os: macos-latest
+            arch: universal2
+            python-version: "3.12"
+            runner: macos-latest
+
+          # Windows x86_64
+          - os: windows-latest
+            arch: x86_64
+            python-version: "3.12"
+            runner: windows-latest
 
     steps:
       - name: Set up QEMU (for ARM64)
@@ -48,29 +60,20 @@ jobs:
           ref: ${{ inputs.version }}
           submodules: true
 
-      - name: Extract base tag
-        id: extract_tag
-        shell: bash
-        run: |
-          TAG="${{ inputs.version }}"
-          BASE_TAG="${TAG%-*}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
-
       - name: Install Build Tools (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt update
           sudo apt install -y build-essential cmake python3-dev libopenblas-dev patchelf
 
       - name: Install Build Tools (Windows)
-        if: matrix.os == 'windows-latest'
+        if: startsWith(matrix.os, 'windows')
         run: |
           choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
           python -m pip install --upgrade pip setuptools wheel
 
       - name: Install Build Tools (macOS)
-        if: matrix.os == 'macos-latest'
+        if: startsWith(matrix.os, 'macos')
         run: |
           brew install cmake openblas
 
