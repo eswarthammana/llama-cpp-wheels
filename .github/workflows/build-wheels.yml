@@ -87,7 +87,7 @@ jobs:
         run: |
           python3 -m cibuildwheel --output-dir wheelhouse
 
-      - name: Post-build fix: Copy required shared libraries
+      - name: Post-build fix - Copy required shared libraries
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
