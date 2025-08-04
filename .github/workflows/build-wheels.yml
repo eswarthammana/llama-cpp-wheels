@@ -80,7 +80,7 @@ jobs:
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ARCHS: ${{ matrix.cibw_arch }}
           CIBW_ENVIRONMENT: >-
-            CMAKE_ARGS="-DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF"
+            CMAKE_ARGS="-DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DGGML_BUILD_SHARED=OFF"
           CIBW_SKIP: pp* *musllinux* *-win32
           CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.manylinux_image || '' }}
           CIBW_MANYLINUX_AARCH64_IMAGE: ${{ matrix.manylinux_image || '' }}
