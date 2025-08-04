@@ -87,6 +87,13 @@ jobs:
         run: |
           python3 -m cibuildwheel --output-dir wheelhouse
 
+      - name: Post-build fix for missing libllama.so (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          echo "Copying libllama.so into llama_cpp/ to fix missing shared object"
+          cp build/lib*/llama_cpp/libllama.so llama_cpp/
+
       - name: Rename wheel files for clarity
         shell: bash
         run: |
