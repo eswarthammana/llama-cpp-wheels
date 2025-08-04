@@ -87,7 +87,7 @@ jobs:
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ARCHS: ${{ matrix.cibw_arch }}
           CIBW_ENVIRONMENT: >-
-            CMAKE_ARGS="-DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DGGML_BUILD_SHARED=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15"
+            CMAKE_ARGS="-DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15"
           CIBW_SKIP: pp* *musllinux* *-win32
           CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.manylinux_image }}
           CIBW_MANYLINUX_AARCH64_IMAGE: ${{ matrix.manylinux_image }}
@@ -103,36 +103,26 @@ jobs:
             dir=$(mktemp -d)
             unzip "$whl" -d "$dir"
 
-            echo "Searching for .so file..."
-            so_file=$(find "$dir" -name "*.so" | head -n1)
-            echo "Found .so file: $so_file"
-
-            echo "Running ldd to detect missing shared libs..."
-            ldd "$so_file" || true
-
-            # Locate vendor folder where ggml-built libs are stored
-            VENDOR_GGML_DIR="vendor/llama.cpp/build"
-            TARGET_LIB_DIR="$dir/llama_cpp"
-
-            if [ -d "$VENDOR_GGML_DIR" ]; then
-              echo "Copying libggml*.so from $VENDOR_GGML_DIR to $TARGET_LIB_DIR..."
-              mkdir -p "$TARGET_LIB_DIR"
-              cp "$VENDOR_GGML_DIR"/libggml*.so "$TARGET_LIB_DIR"/ || true
-            else
-              echo "Warning: Vendor directory $VENDOR_GGML_DIR not found!"
+            echo "Looking for libggml-base.so inside subfolders"
+            found_lib=$(find "$dir" -name libggml-base.so | head -n1)
+            if [ -z "$found_lib" ]; then
+              echo "::error::libggml-base.so not found inside wheel."
+              exit 1
             fi
 
-            echo "Listing contents of $TARGET_LIB_DIR"
-            ls -lh "$TARGET_LIB_DIR" || true
+            echo "Moving libggml-base.so to package root..."
+            pkg_dir=$(find "$dir" -type d -name "llama_cpp" | head -n1)
+            mv "$found_lib" "$pkg_dir/libggml-base.so"
 
-            echo "Repacking the fixed wheel..."
-            repaired_zip="${whl%.whl}-fixed.whl"
-            (cd "$dir" && zip -r9 "$OLDPWD/$repaired_zip" .)
+            echo "Repacking fixed wheel..."
+            fixed_whl="${whl%.whl}-fixed.whl"
+            (cd "$dir" && zip -r9 "$OLDPWD/$fixed_whl" .)
             rm -rf "$dir"
 
-            echo "Running auditwheel repair..."
-            auditwheel repair "$repaired_zip" -w repaired_wheels || {
-              echo "Auditwheel failed on $repaired_zip, skipping..."
+            echo "Running auditwheel..."
+            auditwheel repair "$fixed_whl" -w repaired_wheels || {
+              echo "::error::auditwheel repair failed on $fixed_whl"
+              exit 1
             }
           done
 
