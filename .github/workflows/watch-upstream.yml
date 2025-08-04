@@ -2,7 +2,7 @@ name: Auto-Trigger on llama-cpp-python Release
 
 on:
   schedule:
-    - cron: '0 */12 * * *'  # Every 12 hours UTC
+    - cron: '0 */12 * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,13 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install jq (if missing)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Get latest upstream llama-cpp-python tag
         id: get_latest
+        shell: bash
         run: |
-          # Fetch latest tag (e.g., v0.3.1-cu124, v0.3.1-metal, or v0.3.1)
           TAG=$(curl -s https://api.github.com/repos/abetlen/llama-cpp-python/releases/latest | jq -r '.tag_name')
 
-          # Derive base tag (strip suffix after last dash, if present)
+          if [[ -z "$TAG" ]]; then
+            echo "❌ Failed to fetch tag"
+            exit 1
+          fi
+
           if [[ "$TAG" == *-* ]]; then
             BASE_TAG="${TAG%-*}"
           else
@@ -31,6 +38,7 @@ jobs:
 
       - name: Check if this release was already built
         id: check
+        shell: bash
         run: |
           TAGNAME="llama-cpp-${{ steps.get_latest.outputs.tag }}"
           echo "Checking if release $TAGNAME exists..."
