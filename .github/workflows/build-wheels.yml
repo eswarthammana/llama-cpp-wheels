@@ -77,11 +77,12 @@ jobs:
         env:
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ARCHS: ${{ matrix.cibw_arch }}
-          CIBW_SKIP_AUDITWHEEL: 1
           CIBW_ENVIRONMENT: >-
             CMAKE_ARGS="-DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF"
           CIBW_SKIP: pp* *musllinux* *-win32
-        run: python3 -m cibuildwheel --output-dir wheelhouse
+        run: |
+          export CIBW_SKIP_AUDITWHEEL=1
+          python3 -m cibuildwheel --output-dir wheelhouse
 
       - name: Rename wheel files for clarity
         shell: bash
