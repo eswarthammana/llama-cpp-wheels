@@ -1,18 +1,15 @@
-name: Build and Publish Wheels
+name: Build CPU Wheels
 
 on:
   workflow_dispatch:
     inputs:
-      llama_cpp_version:
-        description: 'Full llama-cpp-python version (e.g., v0.3.4-cu121)'
+      version:
+        description: "Git tag or commit to build from"
         required: true
       publish_release:
-        description: "Upload wheels to GitHub Release"
-        required: false
-        default: "true"
-
-permissions:
-  contents: write
+        description: "Publish wheels to GitHub Release?"
+        required: true
+        default: "false"
 
 jobs:
   build_wheels:
@@ -23,24 +20,18 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x86_64
-            cibw_arch: auto
-            manylinux_image: manylinux2014
 
           - os: ubuntu-latest
             platform: linux
             arch: aarch64
-            cibw_arch: aarch64
-            manylinux_image: manylinux2014
 
           - os: macos-latest
             platform: macos
             arch: universal2
-            cibw_arch: universal2
 
           - os: windows-latest
             platform: windows
             arch: AMD64
-            cibw_arch: auto
 
     steps:
       - name: Set up QEMU (for ARM64)
@@ -49,56 +40,47 @@ jobs:
         with:
           platforms: all
 
-      - name: Set up Python 3.12.9
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version }}
+          submodules: true
+
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12.9'
 
-      - name: Checkout llama-cpp-python
-        uses: actions/checkout@v4
-        with:
-          repository: abetlen/llama-cpp-python
-          ref: ${{ inputs.llama_cpp_version }}
-          submodules: true
-
-      - name: Extract base tag
-        id: extract_tag
-        shell: bash
-        run: |
-          TAG="${{ inputs.llama_cpp_version }}"
-          BASE_TAG="${TAG%-*}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Install system dependencies (Linux only)
+      - name: Install Build Tools (Linux)
         if: matrix.os == 'ubuntu-latest'
-        shell: bash
         run: |
           sudo apt update
-          sudo apt install -y cmake build-essential python3-dev libopenblas-dev patchelf
+          sudo apt install -y build-essential cmake python3-dev libopenblas-dev patchelf
 
-      - name: Install cibuildwheel
-        shell: bash
-        run: pip install cibuildwheel
-
-      - name: Build wheels with cibuildwheel
-        shell: bash
-        env:
-          CIBW_BUILD_VERBOSITY: 1
-          CIBW_ARCHS: ${{ matrix.cibw_arch }}
-          CIBW_ENVIRONMENT: >-
-            CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15"
-          CIBW_SKIP: pp* *musllinux* *-win32
-          CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.manylinux_image }}
-          CIBW_MANYLINUX_AARCH64_IMAGE: ${{ matrix.manylinux_image }}
-          CIBW_REPAIR_WHEEL_COMMAND: >
-            mkdir -p {dest_dir}/llama_cpp/.libs &&
-            cp /project/llama_cpp/lib/*.so {dest_dir}/llama_cpp/.libs &&
-            echo "Contents of .libs:" &&
-            ls -al {dest_dir}/llama_cpp/.libs &&
-            auditwheel repair -w {dest_dir} {wheel}
+      - name: Install Build Tools (Windows)
+        if: matrix.os == 'windows-latest'
         run: |
-          python3 -m cibuildwheel --output-dir wheelhouse
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+          python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install Build Tools (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install cmake openblas
+
+      - name: Build wheels for Python 3.8 to 3.12
+        shell: bash
+        run: |
+          PY_VERSIONS="3.8 3.9 3.10 3.11 3.12"
+          mkdir -p repaired_wheels
+          for PYVER in $PY_VERSIONS; do
+            echo "Installing Python $PYVER"
+            pyenv install -s $PYVER
+            pyenv local $PYVER
+            python -m pip install -U pip build
+            python -m build --wheel --outdir temp_dist/
+            mv temp_dist/*.whl repaired_wheels/
+          done
 
       - name: Upload built wheels as artifacts
         uses: actions/upload-artifact@v4
