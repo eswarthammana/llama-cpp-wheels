@@ -87,13 +87,27 @@ jobs:
         run: |
           python3 -m cibuildwheel --output-dir wheelhouse
 
-      - name: Post-build fix for missing shared objects (Linux only)
+      - name: Post-build fix: Copy required shared libraries
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
-          echo "Fixing missing shared libraries"
+          echo "Locating shared objects from build/..."
+          mkdir -p llama_cpp
           find build/ -name "libllama.so" -exec cp {} llama_cpp/ \;
           find build/ -name "libggml*.so" -exec cp {} llama_cpp/ \;
+          echo "Shared libraries copied to llama_cpp/"
+
+      - name: Inject shared libraries into wheel
+        shell: bash
+        run: |
+          echo "Injecting shared objects into built wheels..."
+          for whl in wheelhouse/*.whl; do
+            unzip -q "$whl" -d tmp_wheel
+            mkdir -p tmp_wheel/llama_cpp
+            cp llama_cpp/lib*.so tmp_wheel/llama_cpp/ || true
+            (cd tmp_wheel && zip -qr "../$whl" .)
+            rm -rf tmp_wheel
+          done
 
       - name: Rename wheel files for clarity
         shell: bash
