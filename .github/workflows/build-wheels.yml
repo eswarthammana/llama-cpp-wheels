@@ -53,6 +53,7 @@ jobs:
           submodules: true
 
       - name: Extract base tag
+        shell: bash
         id: extract_tag
         run: |
           TAG="${{ inputs.llama_cpp_version }}"
