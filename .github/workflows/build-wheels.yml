@@ -87,46 +87,18 @@ jobs:
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ARCHS: ${{ matrix.cibw_arch }}
           CIBW_ENVIRONMENT: >-
-            CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DGGML_BUILD_SHARED=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15"
+            CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15"
           CIBW_SKIP: pp* *musllinux* *-win32
           CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.manylinux_image }}
           CIBW_MANYLINUX_AARCH64_IMAGE: ${{ matrix.manylinux_image }}
+          CIBW_REPAIR_WHEEL_COMMAND: >
+            mkdir -p {dest_dir}/llama_cpp/.libs &&
+            cp /project/llama_cpp/lib/*.so {dest_dir}/llama_cpp/.libs &&
+            echo "Contents of .libs:" &&
+            ls -al {dest_dir}/llama_cpp/.libs &&
+            auditwheel repair -w {dest_dir} {wheel}
         run: |
           python3 -m cibuildwheel --output-dir wheelhouse
-
-      - name: Post-process and repair wheels
-        shell: bash
-        run: |
-          mkdir -p repaired_wheels
-          for whl in wheelhouse/*.whl; do
-            echo "Unzipping: $whl"
-            dir=$(mktemp -d)
-            unzip "$whl" -d "$dir"
-
-            # Find the top-level llama_cpp package dir
-            pkg_dir=$(find "$dir" -type d -name "llama_cpp" | head -n1)
-            if [ -z "$pkg_dir" ]; then
-              echo "::error::llama_cpp package not found"
-              exit 1
-            fi
-
-            echo "Moving all .so files inside llama_cpp/..."
-            find "$pkg_dir" -type f -name "*.so" -exec mv -v {} "$pkg_dir/" \;
-
-            echo "Removing now-empty subdirectories inside llama_cpp/"
-            find "$pkg_dir" -type d -empty -delete
-
-            echo "Repacking fixed wheel..."
-            fixed_whl="${whl%.whl}-fixed.whl"
-            (cd "$dir" && zip -r9 "$OLDPWD/$fixed_whl" .)
-            rm -rf "$dir"
-
-            echo "Running auditwheel..."
-            auditwheel repair "$fixed_whl" -w repaired_wheels || {
-              echo "::error::auditwheel repair failed on $fixed_whl"
-              exit 1
-            }
-          done
 
       - name: Upload built wheels as artifacts
         uses: actions/upload-artifact@v4
