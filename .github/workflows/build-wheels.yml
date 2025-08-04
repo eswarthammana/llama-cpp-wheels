@@ -103,16 +103,18 @@ jobs:
             dir=$(mktemp -d)
             unzip "$whl" -d "$dir"
 
-            echo "Looking for libggml-base.so inside subfolders"
-            found_lib=$(find "$dir" -name libggml-base.so | head -n1)
-            if [ -z "$found_lib" ]; then
-              echo "::error::libggml-base.so not found inside wheel."
+            # Find the top-level llama_cpp package dir
+            pkg_dir=$(find "$dir" -type d -name "llama_cpp" | head -n1)
+            if [ -z "$pkg_dir" ]; then
+              echo "::error::llama_cpp package not found"
               exit 1
             fi
 
-            echo "Moving libggml-base.so to package root..."
-            pkg_dir=$(find "$dir" -type d -name "llama_cpp" | head -n1)
-            mv "$found_lib" "$pkg_dir/libggml-base.so"
+            echo "Moving all .so files inside llama_cpp/..."
+            find "$pkg_dir" -type f -name "*.so" -exec mv -v {} "$pkg_dir/" \;
+
+            echo "Removing now-empty subdirectories inside llama_cpp/"
+            find "$pkg_dir" -type d -empty -delete
 
             echo "Repacking fixed wheel..."
             fixed_whl="${whl%.whl}-fixed.whl"
