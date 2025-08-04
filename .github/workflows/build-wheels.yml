@@ -36,10 +36,10 @@ jobs:
             runner: macos-latest
 
           # Windows x86_64
-          - os: windows-latest
-            arch: x86_64
-            python-version: "3.12"
-            runner: windows-latest
+          # - os: windows-latest
+          #   arch: x86_64
+          #   python-version: "3.12"
+          #   runner: windows-latest
 
     steps:
       - name: Set up QEMU (for ARM64)
