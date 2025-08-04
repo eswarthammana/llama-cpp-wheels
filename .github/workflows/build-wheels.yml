@@ -8,8 +8,8 @@ on:
         required: true
       publish_release:
         description: "Publish wheels to GitHub Release?"
-        required: true
-        default: "false"
+        required: false
+        default: "true"
 
 jobs:
   build_wheels:
@@ -40,16 +40,26 @@ jobs:
         with:
           platforms: all
 
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.version }}
-          submodules: true
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12.9'
+
+      - name: Checkout llama-cpp-python
+        uses: actions/checkout@v4
+        with:
+          repository: abetlen/llama-cpp-python
+          ref: ${{ inputs.llama_cpp_version }}
+          submodules: true
+
+      - name: Extract base tag
+        id: extract_tag
+        shell: bash
+        run: |
+          TAG="${{ inputs.llama_cpp_version }}"
+          BASE_TAG="${TAG%-*}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Install Build Tools (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -78,15 +88,14 @@ jobs:
             pyenv install -s $PYVER
             pyenv local $PYVER
             python -m pip install -U pip build
-            python -m build --wheel --outdir temp_dist/
-            mv temp_dist/*.whl repaired_wheels/
+            python -m build --wheel --outdir dist/
           done
 
       - name: Upload built wheels as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: llama-wheels-${{ matrix.os }}-${{ matrix.arch }}
-          path: repaired_wheels/*.whl
+          path: dist/*.whl
 
   release:
     name: Release to GitHub
