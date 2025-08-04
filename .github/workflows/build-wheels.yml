@@ -144,7 +144,7 @@ jobs:
 
   release:
     name: Release to GitHub
-    needs: build
+    needs: build_wheels
     if: ${{ github.event.inputs.publish_release == 'true' }}
     runs-on: ubuntu-latest
     steps:
