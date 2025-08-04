@@ -1,10 +1,10 @@
-name: Build and Upload llama-cpp-python Wheels
+name: Build and Publish Wheels
 
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Tag version (e.g. v0.3.4-cu121)"
+      llama_cpp_version:
+        description: 'Full llama-cpp-python version (e.g., v0.3.4-cu121)'
         required: true
       publish_release:
         description: "Upload wheels to GitHub Release"
@@ -13,54 +13,89 @@ on:
 
 permissions:
   contents: write
-
+  
 jobs:
-  build:
-    name: Build wheels
+  build_wheels:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
+            platform: linux
             arch: x86_64
+            cibw_arch: auto
+            manylinux_image: manylinux2014
+
           - os: ubuntu-latest
+            platform: linux
             arch: aarch64
+            cibw_arch: aarch64
+            manylinux_image: manylinux2014
+
           - os: macos-latest
+            platform: macos
             arch: universal2
+            cibw_arch: universal2
+
           - os: windows-latest
+            platform: windows
             arch: AMD64
+            cibw_arch: auto
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Set up QEMU (for ARM64)
+        if: matrix.arch == 'aarch64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
 
-      - name: Set up Python
+      - name: Set up Python 3.12.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12.9'
 
-      - name: Install system deps (Linux only)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake make gcc g++ unzip patchelf
+      - name: Checkout llama-cpp-python
+        uses: actions/checkout@v4
+        with:
+          repository: abetlen/llama-cpp-python
+          ref: ${{ inputs.llama_cpp_version }}
+          submodules: true
 
-      - name: Install Python build tools
+      - name: Extract base tag
+        id: extract_tag
+        shell: bash
         run: |
-          pip install --upgrade pip
-          pip install cibuildwheel build auditwheel
+          TAG="${{ inputs.llama_cpp_version }}"
+          BASE_TAG="${TAG%-*}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Install system dependencies (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          sudo apt update
+          sudo apt install -y cmake build-essential python3-dev libopenblas-dev patchelf
+
+      - name: Install cibuildwheel
+        shell: bash
+        run: pip install cibuildwheel
 
       - name: Build wheels with cibuildwheel
+        shell: bash
         env:
-          CIBW_ARCHS: ${{ matrix.arch }}
-          CIBW_SKIP: "pp* *-musllinux*"
-          CIBW_ENVIRONMENT: >
-            CMAKE_ARGS="-DLLAMA_NATIVE=OFF -DLLAMA_BLAS=ON -DLLAMA_OPENBLAS=ON"
-            CMAKE_BUILD_PARALLEL_LEVEL=2
+          CIBW_BUILD_VERBOSITY: 1
+          CIBW_ARCHS: ${{ matrix.cibw_arch }}
+          CIBW_ENVIRONMENT: >-
+            CMAKE_ARGS="-DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DGGML_BUILD_SHARED=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15"
+          CIBW_SKIP: pp* *musllinux* *-win32
+          CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.manylinux_image }}
+          CIBW_MANYLINUX_AARCH64_IMAGE: ${{ matrix.manylinux_image }}
         run: |
-          python -m cibuildwheel --output-dir wheelhouse
+          python3 -m cibuildwheel --output-dir wheelhouse
 
       - name: Post-process and repair wheels
+        shell: bash
         run: |
           mkdir -p repaired_wheels
           for whl in wheelhouse/*.whl; do
@@ -102,6 +137,7 @@ jobs:
           done
 
       - name: Upload built wheels as artifacts
+        shell: bash
         uses: actions/upload-artifact@v4
         with:
           name: llama-wheels-${{ matrix.os }}-${{ matrix.arch }}
@@ -109,6 +145,7 @@ jobs:
 
   release:
     name: Release to GitHub
+    shell: bash
     needs: build
     if: ${{ github.event.inputs.publish_release == 'true' }}
     runs-on: ubuntu-latest
