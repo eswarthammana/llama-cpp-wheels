@@ -1,0 +1,98 @@
+name: Build and Publish Wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      llama_cpp_version:
+        description: 'Full llama-cpp-python version (e.g., v0.3.1-cu121)'
+        required: true
+
+jobs:
+  build_wheels:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+            cibw_arch: auto
+
+          - os: ubuntu-latest
+            platform: linux
+            arch: aarch64
+            cibw_arch: aarch64
+
+          - os: macos-latest
+            platform: macos
+            arch: universal2
+            cibw_arch: universal2
+
+          - os: windows-latest
+            platform: windows
+            arch: AMD64
+            cibw_arch: auto
+
+    steps:
+      - name: Set up QEMU (for ARM64)
+        if: matrix.arch == 'aarch64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Set up Python 3.12.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.9'
+
+      - name: Checkout llama-cpp-python
+        uses: actions/checkout@v4
+        with:
+          repository: abetlen/llama-cpp-python
+          ref: ${{ inputs.llama_cpp_version }}
+          submodules: true
+
+      - name: Extract base tag
+        id: extract_tag
+        run: |
+          TAG="${{ inputs.llama_cpp_version }}"
+          BASE_TAG="${TAG%-*}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Install system dependencies (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install -y cmake build-essential python3-dev libopenblas-dev
+
+      - name: Install cibuildwheel
+        run: pip install cibuildwheel
+
+      - name: Build wheels with cibuildwheel
+        env:
+          CIBW_BUILD_VERBOSITY: 1
+          CIBW_ARCHS: ${{ matrix.cibw_arch }}
+          CIBW_ENVIRONMENT: >-
+            CMAKE_ARGS="-DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF"
+          CIBW_SKIP: pp* *musllinux* *-win32
+        run: |
+          python3 -m cibuildwheel --output-dir wheelhouse
+
+      - name: Rename wheel files for clarity
+        run: |
+          mkdir renamed
+          for whl in wheelhouse/*.whl; do
+            base=$(basename "$whl")
+            new="llama-cpp-python-${{ matrix.platform }}-${{ matrix.arch }}-${{ steps.extract_tag.outputs.tag }}-${base}"
+            cp "$whl" "renamed/$new"
+          done
+
+      - name: Upload renamed wheels as GitHub Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.llama_cpp_version }}
+          name: "llama-cpp-python ${{ inputs.llama_cpp_version }}"
+          files: renamed/*.whl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

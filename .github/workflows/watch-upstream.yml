@@ -1,0 +1,55 @@
+name: Auto-Trigger on llama-cpp-python Release
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'  # Every 12 hours UTC
+  workflow_dispatch:
+
+jobs:
+  check_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get latest upstream llama-cpp-python tag
+        id: get_latest
+        run: |
+          # Fetch latest tag (e.g., v0.3.1-cu124, v0.3.1-metal, or v0.3.1)
+          TAG=$(curl -s https://api.github.com/repos/abetlen/llama-cpp-python/releases/latest | jq -r '.tag_name')
+
+          # Derive base tag (strip suffix after last dash, if present)
+          if [[ "$TAG" == *-* ]]; then
+            BASE_TAG="${TAG%-*}"
+          else
+            BASE_TAG="$TAG"
+          fi
+
+          echo "Latest tag: $TAG"
+          echo "Base tag: $BASE_TAG"
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check if this release was already built
+        id: check
+        run: |
+          TAGNAME="llama-cpp-${{ steps.get_latest.outputs.tag }}"
+          echo "Checking if release $TAGNAME exists..."
+
+          if gh release view "$TAGNAME" &> /dev/null; then
+            echo "✅ Already exists: $TAGNAME"
+            echo "trigger=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "🚀 New release will be built: $TAGNAME"
+            echo "trigger=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger build-wheels.yml
+        if: steps.check.outputs.trigger == 'true'
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: build-wheels.yml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          inputs: |
+            llama_cpp_version: ${{ steps.get_latest.outputs.tag }}
