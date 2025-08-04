@@ -52,6 +52,6 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           inputs: >-
             {
-              "version": "${{ steps.get_latest.outputs.tag }}",
+              "llama_cpp_version": "${{ steps.get_latest.outputs.tag }}",
               "publish_release": "true"
             }
