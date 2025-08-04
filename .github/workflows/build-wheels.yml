@@ -13,7 +13,7 @@ on:
 
 permissions:
   contents: write
-  
+
 jobs:
   build_wheels:
     runs-on: ${{ matrix.os }}
@@ -137,7 +137,6 @@ jobs:
           done
 
       - name: Upload built wheels as artifacts
-        shell: bash
         uses: actions/upload-artifact@v4
         with:
           name: llama-wheels-${{ matrix.os }}-${{ matrix.arch }}
@@ -145,7 +144,6 @@ jobs:
 
   release:
     name: Release to GitHub
-    shell: bash
     needs: build
     if: ${{ github.event.inputs.publish_release == 'true' }}
     runs-on: ubuntu-latest
