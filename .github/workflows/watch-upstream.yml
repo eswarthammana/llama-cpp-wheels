@@ -24,14 +24,14 @@ jobs:
             exit 1
           fi
 
-          echo "Latest tag: $TAG"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          BASE_TAG="${TAG%-*}"
+          echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Check if this release was already built
         id: check
         shell: bash
         run: |
-          TAGNAME="llama-cpp-${{ steps.get_latest.outputs.tag }}"
+          TAGNAME="${{ steps.get_latest.outputs.base_tag }}"
           echo "Checking if release $TAGNAME exists..."
 
           if gh release view "$TAGNAME" &> /dev/null; then
