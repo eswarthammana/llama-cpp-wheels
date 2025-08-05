@@ -32,7 +32,7 @@ Wheels are built for:
 
 ## 🛠️ How It Works
 
-### 1. `auto-trigger.yml` – Scheduled Trigger (Every 12h)
+### 1. `watch-upstream.yml` – Scheduled Trigger (Every 12h)
 
 * Fetches the latest release tag from the [llama-cpp-python GitHub API](https://api.github.com/repos/abetlen/llama-cpp-python/releases/latest)
 * Extracts the base tag (e.g., `v0.3.14` from `v0.3.14-cu124`)
@@ -77,7 +77,7 @@ You can manually build a specific version:
 
 ## ⏰ Schedule
 
-The `auto-trigger.yml` workflow runs every **12 hours** via cron:
+The `watch-upstream.yml` workflow runs every **12 hours** via cron:
 
 ```yaml
 schedule:
