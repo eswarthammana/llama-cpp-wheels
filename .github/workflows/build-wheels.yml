@@ -37,10 +37,10 @@ jobs:
             arch: universal2
             cibw_arch: universal2
 
-          - os: windows-latest
-            platform: windows
-            arch: AMD64
-            cibw_arch: auto
+          # - os: windows-latest
+          #   platform: windows
+          #   arch: AMD64
+          #   cibw_arch: auto
 
     steps:
       - name: Set up QEMU (for ARM64)
