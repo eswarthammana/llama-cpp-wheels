@@ -10,41 +10,56 @@ This repository automatically builds and publishes **Python wheels** for [abetle
 
 This build system supports:
 
-| OS       | Architecture |
-|----------|--------------|
-| Linux    | `x86_64`, `aarch64` |
-| macOS    | `arm64`, `x86_64`   |
-| Windows  | `x86_64`            |
+| OS      | Architecture        |
+| ------- | ------------------- |
+| Linux   | `x86_64`, `aarch64` |
+| macOS   | `arm64`, `x86_64`   |
+| Windows | `x86_64`            |
 
-All builds are for **Python 3.12.9**.
+---
+
+## 🧪 Supported Python Versions
+
+Wheels are built for:
+
+* Python **3.8 → 3.13**
+
+> This means all of the following tags will be available:
+>
+> `cp38`, `cp39`, `cp310`, `cp311`, `cp312`, `cp313`
 
 ---
 
 ## 🛠️ How It Works
 
 ### 1. `auto-trigger.yml` – Scheduled Trigger (Every 12h)
-- Fetches the latest release tag from the [llama-cpp-python GitHub API](https://api.github.com/repos/abetlen/llama-cpp-python/releases/latest)
-- Extracts the base tag (e.g., `v0.3.14` from `v0.3.14-cu124`)
-- If the release tag hasn’t been built yet:
-  - Triggers the `build-wheels.yml` workflow with that version
+
+* Fetches the latest release tag from the [llama-cpp-python GitHub API](https://api.github.com/repos/abetlen/llama-cpp-python/releases/latest)
+* Extracts the base tag (e.g., `v0.3.14` from `v0.3.14-cu124`)
+* If the release hasn’t been built yet:
+
+  * Triggers `build-wheels.yml` with that version
 
 ### 2. `build-wheels.yml` – Cross-Platform Builder
-- Uses `cibuildwheel` and `docker buildx` to build wheels
-- Supports:
-  - 🐧 Linux (with QEMU for `aarch64`)
-  - 🍎 macOS (Intel + Apple Silicon)
-  - 🪟 Windows
-- Builds all wheels and pushes them to a **GitHub Release** matching the tag
+
+* Uses `cibuildwheel` and `docker buildx` to build wheels
+* Supports:
+
+  * 🐧 Linux (QEMU for `aarch64`)
+  * 🍎 macOS (Intel + Apple Silicon)
+  * 🪟 Windows (MSVC toolchain)
+* Builds wheels for Python 3.8 through 3.13
+* Uploads wheels to a **GitHub Release** matching the tag
 
 ---
 
 ## 📦 Example Wheel Names
 
 ```text
-llama_cpp_python-0.3.14-cp312-cp312-manylinux_x86_64.whl
-llama_cpp_python-0.3.14-cp312-cp312-manylinux_aarch64.whl
-llama_cpp_python-0.3.14-cp312-cp312-macosx_11_0_arm64.whl
-llama_cpp_python-0.3.14-cp312-cp312-win_amd64.whl
+llama_cpp_python-0.3.14-cp38-cp38-manylinux_x86_64.whl
+llama_cpp_python-0.3.14-cp310-cp310-manylinux_aarch64.whl
+llama_cpp_python-0.3.14-cp313-cp313-macosx_11_0_arm64.whl
+llama_cpp_python-0.3.14-cp311-cp311-win_amd64.whl
 ```
 
 ---
@@ -73,40 +88,33 @@ schedule:
 
 ## 📤 Release Output
 
-Built wheels are pushed as release assets to this repo's **Releases** tab.
-
----
-
-## 🧪 Python Compatibility
-
-This repo currently targets:
-- Python: `3.12.9` (customizable in the workflow)
-
-You can extend support to other Python versions by modifying the `CIBW_BUILD` environment variable in `build-wheels.yml`.
+All built `.whl` files are published as release assets under the **Releases** tab for the corresponding version tag.
 
 ---
 
 ## 🔐 Security Notes
 
-- Each run uses GitHub-hosted runners
-- Isolated builds per platform using Docker and cibuildwheel
-- Relies on official llama-cpp-python repo for source fetching
+* GitHub-hosted runners with ephemeral environments
+* Isolated builds using Docker and `cibuildwheel`
+* Sources pulled directly from upstream: [abetlen/llama-cpp-python](https://github.com/abetlen/llama-cpp-python)
 
 ---
 
 ## 🙋 FAQ
 
-**Q: Does this build support CUDA or Metal?**  
-A: We currently build **CPU-only** wheels. CUDA and Metal variants require specialized runners and environments not supported in the GitHub-hosted runners.
+**Q: Does this build support CUDA or Metal?**
+**A:** Currently, only **CPU-only** builds are supported. CUDA and Metal require custom runners and are not compatible with GitHub-hosted environments.
 
-**Q: Why do wheels include `cu124` in the tag?**  
-A: That reflects the upstream release tag. We strip it to find the base version for naming the release and wheel files.
+**Q: Why do wheels include `cu124` in the tag?**
+**A:** That part comes from the upstream release tag. We extract the base tag (e.g., `v0.3.14`) for organizing releases.
 
-**Q: How do I change the Python version?**  
-A: Modify the `CIBW_BUILD` and `CIBW_PYTHON_VERSION` fields in `build-wheels.yml`.
+**Q: How do I change supported Python versions?**
+**A:** Edit the `CIBW_BUILD` value in `build-wheels.yml`. This repo is already set to build for **Python 3.8–3.13**.
 
 ---
 
 ## 📄 License
 
 MIT © eswarthammana – Built on top of open source contributions from [abetlen](https://github.com/abetlen) and [pypa/cibuildwheel](https://github.com/pypa/cibuildwheel).
+
+---
