@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# Usage: ./build-wheels.sh <TAG> <PYVERSIONS>
-# Example: ./build-wheels.sh v0.3.4-cu121 "cp38-* cp39-*"
+# Usage: ./build_and_release.sh <TAG> <PYVERSIONS>
+# Example: ./build_and_release.sh v0.3.4-cu121 "cp38-* cp39-*"
 
 TAG="${1:-main}"
 PYVERSIONS="${2:-cp38-* cp39-* cp310-* cp311-* cp312-*}"
