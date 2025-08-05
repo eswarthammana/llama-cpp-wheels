@@ -103,12 +103,15 @@ All built `.whl` files are published as release assets under the **Releases** ta
 ## 🙋 FAQ
 
 **Q: Does this build support CUDA or Metal?**
+
 **A:** Currently, only **CPU-only** builds are supported. CUDA and Metal require custom runners and are not compatible with GitHub-hosted environments.
 
 **Q: Why do wheels include `cu124` in the tag?**
+
 **A:** That part comes from the upstream release tag. We extract the base tag (e.g., `v0.3.14`) for organizing releases.
 
 **Q: How do I change supported Python versions?**
+
 **A:** Edit the `CIBW_BUILD` value in `build-wheels.yml`. This repo is already set to build for **Python 3.8–3.13**.
 
 ---
