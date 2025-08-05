@@ -37,10 +37,10 @@ jobs:
             arch: universal2
             cibw_arch: universal2
 
-          # - os: windows-latest
-          #   platform: windows
-          #   arch: AMD64
-          #   cibw_arch: auto
+          - os: windows-latest
+            platform: windows
+            arch: AMD64
+            cibw_arch: auto
 
     steps:
       - name: Set up QEMU (for ARM64)
@@ -77,6 +77,10 @@ jobs:
           sudo apt update
           sudo apt install -y cmake build-essential python3-dev libopenblas-dev patchelf
 
+      - name: Set up MSVC (Windows only)
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install cibuildwheel
         shell: bash
         run: pip install cibuildwheel
@@ -84,14 +88,24 @@ jobs:
       - name: Build wheels with cibuildwheel
         shell: bash
         env:
+          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_BUILD_VERBOSITY: 1
           CIBW_ARCHS: ${{ matrix.cibw_arch }}
-          CIBW_ENVIRONMENT: >-
-            CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DCMAKE_CXX_STANDARD=11 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15"
           CIBW_SKIP: pp* *musllinux* *-win32
+
+          CIBW_ENVIRONMENT_LINUX: >-
+            CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF"
+
+          CIBW_ENVIRONMENT_WINDOWS: >-
+            CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DCMAKE_CXX_STANDARD=17"
+
+          CIBW_ENVIRONMENT_MACOS: >-
+            CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15"
+
           CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.manylinux_image }}
           CIBW_MANYLINUX_AARCH64_IMAGE: ${{ matrix.manylinux_image }}
-          CIBW_REPAIR_WHEEL_COMMAND: >
+
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
             mkdir -p {dest_dir}/llama_cpp/.libs &&
             cp /project/llama_cpp/lib/*.so {dest_dir}/llama_cpp/.libs &&
             echo "Contents of .libs:" &&
@@ -101,12 +115,12 @@ jobs:
               cp {wheel} {dest_dir}
             )
         run: |
-          python3 -m cibuildwheel --output-dir dist
+          python -m cibuildwheel --output-dir dist
 
       - name: Upload built wheel as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: llama-wheels-${{ matrix.os }}-${{ matrix.arch }}-py${{ matrix.python-version }}
+          name: llama-wheels-${{ matrix.os }}-${{ matrix.arch }}
           path: dist/*.whl
 
   release:
