@@ -26,15 +26,20 @@ jobs:
 
           BASE_TAG="${TAG%-*}"
           echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
+      
+      - name: Debug - List releases in this repo
+        run: gh release list --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Check if this release was already built
         id: check
         shell: bash
         run: |
           TAGNAME="${{ steps.get_latest.outputs.base_tag }}"
-          echo "Checking if release $TAGNAME exists..."
+          echo "Checking if release $TAGNAME exists in ${{ github.repository }}..."
 
-          if gh release view "$TAGNAME" &> /dev/null; then
+          if gh release view "$TAGNAME" --repo "${{ github.repository }}" &> /dev/null; then
             echo "✅ Already exists: $TAGNAME"
             echo "trigger=false" >> "$GITHUB_OUTPUT"
           else
