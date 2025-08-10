@@ -19,13 +19,15 @@ jobs:
         run: |
           TAG=$(curl -s https://api.github.com/repos/abetlen/llama-cpp-python/releases/latest | jq -r '.tag_name')
 
-          if [[ -z "$TAG" ]]; then
+          if [[ -z "$TAG" || "$TAG" == "null" ]]; then
             echo "❌ Failed to fetch tag"
+            echo "trigger=false" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
           BASE_TAG="${TAG%-*}"
           echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "trigger=true" >> "$GITHUB_OUTPUT"
       
       - name: Debug - List releases in this repo
         run: gh release list --repo "${{ github.repository }}"
@@ -50,7 +52,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Trigger build-wheels.yml
-        if: steps.check.outputs.trigger == 'true'
+        if: steps.get_latest.outputs.trigger == 'true' && steps.check.outputs.trigger == 'true'
         uses: benc-uk/workflow-dispatch@v1
         with:
           workflow: build-wheels.yml
