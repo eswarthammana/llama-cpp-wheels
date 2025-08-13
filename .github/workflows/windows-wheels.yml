@@ -19,7 +19,14 @@ jobs:
         run: |
           echo "::set-output name=tag::${{ github.event.inputs.llama_cpp_version }}"
           # Optionally extract base tag here if needed
-      
+
+      - name: Checkout llama-cpp-python
+        uses: actions/checkout@v4
+        with:
+          repository: abetlen/llama-cpp-python
+          ref: ${{ github.event.inputs.llama_cpp_version }}
+          submodules: true
+          
       - name: Initialize and update git submodules
         run: git submodule update --init --recursive
 
@@ -67,14 +74,6 @@ jobs:
                 $_
             }
             } | Set-Content $logPath
-
-
-      - name: Checkout llama-cpp-python
-        uses: actions/checkout@v4
-        with:
-          repository: abetlen/llama-cpp-python
-          ref: ${{ github.event.inputs.llama_cpp_version }}
-          submodules: true
 
       - name: Set up MSVC environment
         uses: ilammy/msvc-dev-cmd@v1
