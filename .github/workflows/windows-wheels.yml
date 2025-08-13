@@ -20,7 +20,19 @@ jobs:
           echo "::set-output name=tag::${{ github.event.inputs.llama_cpp_version }}"
           # Optionally extract base tag here if needed
       
-      - name: Debug - list source files
+      - name: List root directory after checkout
+        run: dir
+        shell: cmd
+
+      - name: List vendor directory after checkout
+        run: dir vendor
+        shell: cmd
+
+      - name: List llama.cpp directory after checkout
+        run: dir vendor\llama.cpp
+        shell: cmd
+
+      - name: List common directory after checkout
         run: dir vendor\llama.cpp\common
         shell: cmd
 
