@@ -51,4 +51,5 @@ jobs:
               -DCMAKE_CXX_STANDARD=17
               -DCMAKE_C_STANDARD_REQUIRED=ON
               -DCMAKE_CXX_STANDARD_REQUIRED=ON
+              -DLLAMA_BUILD_EXAMPLES=OFF
         run: python -m cibuildwheel --output-dir dist
