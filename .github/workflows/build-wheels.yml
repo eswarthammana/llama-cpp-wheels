@@ -52,10 +52,10 @@ jobs:
             arch: universal2
             cibw_arch: universal2
 
-          # - os: windows-latest
-          #   platform: windows
-          #   arch: AMD64
-          #   cibw_arch: auto
+          - os: windows-latest
+            platform: windows
+            arch: AMD64
+            cibw_arch: auto
 
     steps:
       - name: Set up QEMU (for ARM64)
@@ -82,6 +82,37 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y cmake build-essential python3-dev libopenblas-dev patchelf
+      
+      - name: Patch chrono include and static_assert macro
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+            $logPath = "vendor\llama.cpp\common\log.cpp"
+
+            # Check file exists before patching
+            if (-Not (Test-Path $logPath)) {
+              Write-Error "File not found: $logPath"
+              exit 1
+            }
+
+            $lines = Get-Content $logPath
+
+            # Add #include <chrono> if missing
+            if (-not ($lines -match "#include <chrono>")) {
+              $lastIncludeIdx = ($lines | Select-String '#include' | Select-Object -Last 1).LineNumber - 1
+              $lines = $lines[0..$lastIncludeIdx] + '#include <chrono>' + $lines[($lastIncludeIdx+1)..($lines.Length - 1)]
+              $lines | Set-Content $logPath
+            }
+
+            # Comment out static_assert macro redefinition
+            (Get-Content $logPath) | ForEach-Object {
+              if ($_ -match '^\s*#define\s+static_assert') {
+                  "# $($_)"
+              } else {
+                  $_
+              }
+            } | Set-Content $logPath
+
 
       - name: Set up MSVC (Windows only)
         if: matrix.os == 'windows-latest'
@@ -103,8 +134,19 @@ jobs:
             CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF"
 
           CIBW_ENVIRONMENT_WINDOWS: >-
-            CXXFLAGS="-std=c++17"
-            CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF -DCMAKE_CXX_STANDARD=17"
+            CFLAGS: "/std:c11"
+            CXXFLAGS: "/std:c++17 /Zc:__cplusplus"
+            CMAKE_ARGS: >-
+                -DCMAKE_INSTALL_LIBDIR=llama_cpp
+                -DLLAMA_CUBLAS=OFF
+                -DLLAMA_METAL=OFF
+                -DLLAMA_OPENBLAS=ON
+                -DLLAMA_NATIVE=OFF
+                -DCMAKE_C_STANDARD=11
+                -DCMAKE_CXX_STANDARD=17
+                -DCMAKE_C_STANDARD_REQUIRED=ON
+                -DCMAKE_CXX_STANDARD_REQUIRED=ON
+                -DLLAMA_BUILD_EXAMPLES=OFF
 
           CIBW_ENVIRONMENT_MACOS: >-
             MACOSX_DEPLOYMENT_TARGET=10.15
@@ -130,15 +172,6 @@ jobs:
             ls -al {dest_dir}/llama_cpp/.libs &&
             delocate-wheel --wheel-dir {dest_dir} {wheel} || (
               echo "⚠️ delocate-wheel failed, copying original wheel..." &&
-              cp {wheel} {dest_dir}
-            )
-          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: >
-            mkdir -p {dest_dir}/llama_cpp/.libs &&
-            cp /project/llama_cpp/lib/*.dll {dest_dir}/llama_cpp/.libs &&
-            echo "Contents of .libs:" &&
-            ls -al {dest_dir}/llama_cpp/.libs &&
-            python -m auditwheel repair --plat win_amd64 --destdir {dest_dir} {wheel} || (
-              echo "⚠️ auditwheel failed, copying original wheel..." &&
               cp {wheel} {dest_dir}
             )
         run: |
