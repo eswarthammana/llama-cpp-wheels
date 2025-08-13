@@ -20,26 +20,40 @@ jobs:
           echo "::set-output name=tag::${{ github.event.inputs.llama_cpp_version }}"
           # Optionally extract base tag here if needed
       
-      - name: Patch common/log.cpp to fix chrono errors
+      - name: Debug: list source files
+        run: dir vendor\llama.cpp\common
+        shell: cmd
+
+      - name: Patch chrono include and static_assert macro
         shell: pwsh
         run: |
-          $logPath = "vendor\llama.cpp\common\log.cpp"
+            $logPath = "vendor\llama.cpp\common\log.cpp"
 
-          $lines = Get-Content $logPath
-          if (-not ($lines -match "#include <chrono>")) {
-              $lastIncludeIdx = ($lines | Select-String '#include' | Select-Object -Last 1).LineNumber - 1
-              $lines = $lines[0..$lastIncludeIdx] + '#include <chrono>' + $lines[($lastIncludeIdx+1)..($lines.Length - 1)]
-              $lines | Set-Content $logPath
-          }
+            # Check file exists before patching
+            if (-Not (Test-Path $logPath)) {
+            Write-Error "File not found: $logPath"
+            exit 1
+            }
 
-          (Get-Content $logPath) | ForEach-Object {
-              if ($_ -match '^\s*#define\s+static_assert') {
-                  "# $($_)"
-              } else {
-                  $_
-              }
-          } | Set-Content $logPath
-           
+            $lines = Get-Content $logPath
+
+            # Add #include <chrono> if missing
+            if (-not ($lines -match "#include <chrono>")) {
+            $lastIncludeIdx = ($lines | Select-String '#include' | Select-Object -Last 1).LineNumber - 1
+            $lines = $lines[0..$lastIncludeIdx] + '#include <chrono>' + $lines[($lastIncludeIdx+1)..($lines.Length - 1)]
+            $lines | Set-Content $logPath
+            }
+
+            # Comment out static_assert macro redefinition
+            (Get-Content $logPath) | ForEach-Object {
+            if ($_ -match '^\s*#define\s+static_assert') {
+                "# $($_)"
+            } else {
+                $_
+            }
+            } | Set-Content $logPath
+
+
       - name: Checkout llama-cpp-python
         uses: actions/checkout@v4
         with:
