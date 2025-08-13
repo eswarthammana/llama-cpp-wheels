@@ -20,6 +20,9 @@ jobs:
           echo "::set-output name=tag::${{ github.event.inputs.llama_cpp_version }}"
           # Optionally extract base tag here if needed
       
+      - name: Initialize and update git submodules
+        run: git submodule update --init --recursive
+
       - name: List root directory after checkout
         run: dir
         shell: cmd
