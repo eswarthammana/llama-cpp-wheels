@@ -20,7 +20,7 @@ jobs:
           echo "::set-output name=tag::${{ github.event.inputs.llama_cpp_version }}"
           # Optionally extract base tag here if needed
       
-      - name: Debug: list source files
+      - name: Debug - list source files
         run: dir vendor\llama.cpp\common
         shell: cmd
 
