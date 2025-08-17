@@ -134,19 +134,19 @@ jobs:
             CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp -DLLAMA_CUBLAS=OFF -DLLAMA_METAL=OFF -DLLAMA_OPENBLAS=ON -DLLAMA_NATIVE=OFF"
 
           CIBW_ENVIRONMENT_WINDOWS: >-
-            CFLAGS: "/std:c11"
-            CXXFLAGS: "/std:c++17 /Zc:__cplusplus"
-            CMAKE_ARGS: >-
-                -DCMAKE_INSTALL_LIBDIR=llama_cpp
-                -DLLAMA_CUBLAS=OFF
-                -DLLAMA_METAL=OFF
-                -DLLAMA_OPENBLAS=ON
-                -DLLAMA_NATIVE=OFF
-                -DCMAKE_C_STANDARD=11
-                -DCMAKE_CXX_STANDARD=17
-                -DCMAKE_C_STANDARD_REQUIRED=ON
-                -DCMAKE_CXX_STANDARD_REQUIRED=ON
-                -DLLAMA_BUILD_EXAMPLES=OFF
+            CFLAGS="/std:c11"
+            CXXFLAGS="/std:c++17 /Zc:__cplusplus"
+            CMAKE_ARGS="-DCMAKE_INSTALL_LIBDIR=llama_cpp
+                        -DLLAMA_CUBLAS=OFF
+                        -DLLAMA_METAL=OFF
+                        -DLLAMA_OPENBLAS=ON
+                        -DLLAMA_NATIVE=OFF
+                        -DCMAKE_C_STANDARD=11
+                        -DCMAKE_CXX_STANDARD=17
+                        -DCMAKE_C_STANDARD_REQUIRED=ON
+                        -DCMAKE_CXX_STANDARD_REQUIRED=ON
+                        -DLLAMA_BUILD_EXAMPLES=OFF"
+
 
           CIBW_ENVIRONMENT_MACOS: >-
             MACOSX_DEPLOYMENT_TARGET=10.15
